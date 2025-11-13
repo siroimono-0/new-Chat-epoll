@@ -1,0 +1,7 @@
+{
+  "files.associations": {
+    "memory_resource": "cpp",
+    "random": "cpp",
+    "iostream": "cpp"
+  }
+}

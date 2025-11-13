@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug (GDB)",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/main", // 실행파일 경로 (직접 지정해도 됨)
+      "args": [], // 프로그램 실행 시 인자
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "environment": [],
+      "externalConsole": true, // true면 외부 터미널로 실행됨
+      "MIMode": "gdb",
+      "miDebuggerPath": "/usr/bin/gdb", // GDB 경로 (리눅스 기본)
+      "setupCommands": [
+        {
+          "text": "set pagination off"
+        },
+        {
+          "text": "set print pretty on"
+        },
+        {
+          "text": "handle SIGPIPE nostop noprint pass"
+        } // Broken pipe시 멈추지 않음
+      ]
+    }
+  ]
+}
