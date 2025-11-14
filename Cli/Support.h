@@ -100,7 +100,7 @@ public:
       Exception err(s_name, err_name, errno);
       throw err;
     }
-    printf("success %s\n", name);
+    printf("success %s\n", name.c_str());
     return 0;
   }
 
@@ -173,7 +173,7 @@ struct st_RAII_epoll
 {
   int ep_fd;
   int fd;
-  string name;
+  string name_ep_fd;
 };
 
 class RAII_epoll
@@ -189,10 +189,7 @@ public:
     for (auto &v : vec)
     {
       epoll_ctl(v.ep_fd, EPOLL_CTL_DEL, v.fd, nullptr);
-      cout << "delete ::  " + v.name << "\n";
-
-      close(v.ep_fd);
-      cout << "Close ::  " + v.name << "\n";
+      cout << "delete ::  " + v.name_ep_fd << "\n";
     }
   }
 
@@ -214,11 +211,11 @@ public:
   {
     for (auto &v : vec)
     {
-      close(v.first[0]);
-      close(v.first[1]);
+      close(v.first.first);
+      close(v.first.second);
       cout << "Close ::  " + v.second << "\n";
     }
   }
 
-  vector<pair<int[2], string>> vec;
+  vector<pair<pair<int, int>, string>> vec;
 };

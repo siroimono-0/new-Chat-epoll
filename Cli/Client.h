@@ -49,14 +49,35 @@ public:
   ~Client();
 
   void set_Client();
+  void sendToWk(); // mux ok
+  void set_loop_Client(bool set);
+
+  //============================================================================
+  void createTh_Recv(); // 리시브용 쓰레드
+  static void *recv_EntryPoint(void *vp);
+  void recv_EntryPoint_Loop();
+  void formSv_Recv();
+  //============================================================================
 
 private:
-  //=======================================================
-  int cliSoc_fd;
-  //=======================================================
+  //============================================================================
+  int cli_Soc_Fd; // raii ok
+  int outPut_Ter_Fd = 0;
+  int outPut_Ep_Fd;                // raii ok
+  bool loop_Client = true;         // mux ok
+  pthread_mutex_t loop_Client_mux; // init destroy ok
+  //============================================================================
 
-  RAII_nomal *raii_nomal;
-  RAII_soc *raii_soc;
-  RAII_epoll *raii_ep;
-  RAII_pipe *raii_pipe;
+  //============================================================================
+  int recv_Ep_Fd; // raii ok
+  //============================================================================
+
+  //============================================================================
+  int wakeUp_Fd; // raii ok
+  //============================================================================
+
+  RAII_nomal *raii_Nomal;
+  RAII_soc *raii_Soc;
+  RAII_epoll *raii_Ep;
+  RAII_pipe *raii_Pipe;
 };
