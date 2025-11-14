@@ -104,6 +104,8 @@ void Client::set_Client()
                ep_Arr[i].events & (EPOLLIN))
       {
         this->set_loop_Client(false);
+        uint64_t one;
+        read(this->wakeUp_Fd, &one, sizeof(one));
         break;
       }
     }
@@ -234,12 +236,16 @@ void Client::recv_EntryPoint_Loop()
           ep_Arr[i].events & (EPOLLERR | EPOLLHUP))
       {
         this->set_loop_Client(false);
+        uint64_t g = 1;
+        write(this->wakeUp_Fd, &g, sizeof(g));
         cout << "Server :: EPOLLHUP | EPOLLERR" << "\n";
       }
       else if (ep_Arr[i].data.fd == this->cli_Soc_Fd &&
                ep_Arr[i].events & (EPOLLRDHUP))
       {
         this->set_loop_Client(false);
+        uint64_t g = 1;
+        write(this->wakeUp_Fd, &g, sizeof(g));
         cout << "Server :: EPOLLRDHUP" << "\n";
       }
       else if (ep_Arr[i].data.fd == this->cli_Soc_Fd &&
@@ -252,6 +258,8 @@ void Client::recv_EntryPoint_Loop()
       {
         this->set_loop_Client(false);
         cout << "Server :: Wakeup" << "\n";
+        uint64_t one;
+        read(this->wakeUp_Fd, &one, sizeof(one));
       }
     }
   }

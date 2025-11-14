@@ -85,6 +85,9 @@ void Sv::set_Server()
   this->createTh_Echo();
   // 에코 쓰레드 생성
 
+  this->createTh_Shut();
+  // 셧다운 쓰레드 생성
+
   //===============================epoll====================================
   this->svEp_Fd = epoll_create1(0);
   this->raii_Nomal->vec.push_back({this->svEp_Fd, "svEp_Fd"});
@@ -131,6 +134,12 @@ void Sv::set_Server()
     int ret_ep = epoll_wait(this->svEp_Fd, buf_ep, 5, -1);
     check::ck(string(__func__) + "  epoll_wait", ret_ep, -1);
 
+    if (this->loop_Server == false)
+    {
+      cout << "Server Main WakeUp" << "\n";
+      break;
+    }
+
     for (int i = 0; i < ret_ep; i++)
     {
       if (buf_ep[i].data.fd == this->svSoc_Fd &&
@@ -152,6 +161,8 @@ void Sv::set_Server()
                buf_ep[i].events & (EPOLLIN))
       {
         this->set_Loop_Server(false);
+        uint64_t one;
+        read(this->wakeUp_Fd, &one, sizeof(one));
       }
     }
   }
@@ -344,6 +355,8 @@ void Sv::echo_EntryPoint_Loop()
       {
         this->set_Loop_Server(false);
         cout << "Server :: Wakeup" << "\n";
+        uint64_t one;
+        read(this->wakeUp_Fd, &one, sizeof(one));
       }
     }
   }
@@ -379,3 +392,79 @@ void Sv::formWk_ToCli_Echo()
 //=================================Echo Thread==================================
 //=================================Echo Thread==================================
 //=================================Echo Thread==================================
+
+//=================================Shut Thread==================================
+//=================================Shut Thread==================================
+//=================================Shut Thread==================================
+//=================================Shut Thread==================================
+//=================================Shut Thread==================================
+void Sv::createTh_Shut()
+{
+  pthread_t tid;
+  int ret_P = pthread_create(&tid, nullptr, Shut_EntryPoint, (void *)this);
+  check::ck_r(string(__func__) + " pthread_create", ret_P, 0);
+
+  int ret_D = pthread_detach(tid);
+  check::ck_r(string(__func__) + " pthread_detach", ret_D, 0);
+  return;
+}
+
+void *Sv::Shut_EntryPoint(void *vp)
+{
+  Sv *p_this = (Sv *)vp;
+  try
+  {
+    p_this->Shut_EntryPoint_Loop();
+  }
+  catch (Exception err)
+  {
+    int err_code = err.get_err_code();
+    string err_name = err.get_err_name();
+    string name = err.get_name();
+    printf("ERR\nname     :: %s\nerr type :: %s\nerr code :: %d\n",
+           name.c_str(), err_name.c_str(), err_code);
+    return nullptr;
+  }
+  return nullptr;
+}
+
+void Sv::Shut_EntryPoint_Loop()
+{
+  while (this->loop_Server)
+  {
+    string buf_Get;
+    getline(cin, buf_Get);
+    int buf_Size = (int)buf_Get.size();
+    if (buf_Get == "Exit")
+    {
+      pthread_mutex_lock(&this->fd_Wk_Mux);
+      this->set_Loop_Server(false);
+
+      for (int i = 0; i < (int)this->vec_Fd_Wk.size(); i++)
+      {
+        if (this->vec_Fd_Wk[i].first >= 0)
+        {
+          // send(this->vec_Fd_Wk[i].first, buf_Get.c_str(), buf_Size + 1, 0);
+          this->vec_Fd_Wk[i].second->set_Loop_Echo(false);
+          this->vec_Fd_Wk[i].second->wk_wakeUp_Now();
+        }
+      }
+      pthread_mutex_unlock(&this->fd_Wk_Mux);
+
+      uint64_t g = 1;
+      write(this->wakeUp_Fd, &g, sizeof(g));
+      write(this->wakeUp_Fd, &g, sizeof(g));
+    }
+    else
+    {
+      cout << "Command :: Exit" << "\n";
+    }
+    // send(this->vec_Fd_Wk)
+  }
+  return;
+}
+//=================================Shut Thread==================================
+//=================================Shut Thread==================================
+//=================================Shut Thread==================================
+//=================================Shut Thread==================================
+//=================================Shut Thread==================================

@@ -30,6 +30,13 @@ Wk::~Wk()
   check::ck_r(string(__func__) + " pthread_mutex_destroy", ret_Mx_de, 0);
   return;
 }
+
+void Wk::wk_wakeUp_Now()
+{
+  uint64_t g = 1;
+  write(this->wk_WakeUp_Fd, &g, sizeof(g));
+}
+
 //=========================================================================
 void Wk::set_Loop_Echo(bool set)
 {
@@ -149,6 +156,8 @@ void Wk::wk_EntryPoint_Loop()
       {
         this->set_Loop_Echo(false);
         cout << "Wk :: WakeUp" << "\n";
+        uint64_t one;
+        read(this->wk_WakeUp_Fd, &one, sizeof(one));
       }
     }
   }

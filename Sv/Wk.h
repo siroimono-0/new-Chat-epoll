@@ -57,6 +57,7 @@ public:
   void fromCli_ToSv_Echo();
   //====================================================
   void set_Loop_Echo(bool set); // mutex ok
+  void wk_wakeUp_Now();
   //====================================================
 
 private:

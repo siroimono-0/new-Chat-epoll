@@ -53,9 +53,9 @@ public:
   // void end_Server();
 
   //=========================================================================
-  // void createTh_Getline(); // 셧다운 명령용 쓰레드
-  // static void *del_EntryPoint(void *vp);
-  // void del_EntryPoint_Loop();
+  void createTh_Shut(); // 셧다운 명령용 쓰레드
+  static void *Shut_EntryPoint(void *vp);
+  void Shut_EntryPoint_Loop(); // fd검사 레이스 컨디션 mux ok
   //=========================================================================
 
   //=========================================================================
