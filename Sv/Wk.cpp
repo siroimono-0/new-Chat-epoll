@@ -16,6 +16,8 @@ Wk::Wk()
   // raii
 
   pthread_mutex_init(&this->loop_Echo_Mutex, nullptr);
+  pthread_mutex_init(&this->loop_HartBit_Mux, nullptr);
+
   return;
 }
 
@@ -26,9 +28,11 @@ Wk::~Wk()
   delete this->raii_ep;
   delete this->raii_pipe;
 
-  int ret_Mx_de = pthread_mutex_destroy(&this->loop_Echo_Mutex);
-  check::ck_r(string(__func__) + " pthread_mutex_destroy", ret_Mx_de, 0);
-  return;
+  int ret_Mx_de_1 = pthread_mutex_destroy(&this->loop_Echo_Mutex);
+  check::ck_r(string(__func__) + " pthread_mutex_destroy  ::  loop_Echo_Mutex", ret_Mx_de_1, 0);
+
+  int ret_Mx_de_2 = pthread_mutex_destroy(&this->loop_HartBit_Mux);
+  check::ck_r(string(__func__) + " pthread_mutex_destroy  ::  loop_HartBit_Mux", ret_Mx_de_2, 0);
 }
 
 void Wk::wk_wakeUp_Now()
@@ -129,7 +133,7 @@ void Wk::wk_EntryPoint_Loop()
   while (this->loop_Echo)
   {
     int ret_ep = epoll_wait(this->newCli_Ep_Fd, ep_Arr, 5, -1);
-    check::ck(string(__func__) + " epoll_wait", ret_ep, -1);
+    // check::ck(string(__func__) + " epoll_wait", ret_ep, -1);
 
     for (int i = 0; i < ret_ep; i++)
     {
@@ -175,10 +179,39 @@ void Wk::fromCli_ToSv_Echo()
     return;
   }
 
-  buf_Recv[ret_Recv_Len] = '\0';
+  if (ret_Recv_Len > 0 &&
+      (buf_Recv[ret_Recv_Len - 1] == '\n' ||
+       buf_Recv[ret_Recv_Len - 1] == '\r'))
+  {
+    buf_Recv[--ret_Recv_Len] = '\0';
+  }
+
+  if (strcmp(buf_Recv, "HartBit") == 0)
+  {
+    this->set_HartBit(true);
+    delete[] buf_Recv;
+    return;
+  }
+  else if (ret_Recv_Len > 0)
+  {
+    this->set_HartBit(true);
+  }
 
   send(this->wk_Sv_Wk_PairSoc, buf_Recv, ret_Recv_Len, 0);
 
   delete[] buf_Recv;
   return;
+}
+
+void Wk::set_HartBit(bool set)
+{
+  pthread_mutex_lock(&this->loop_HartBit_Mux);
+  this->hartBit = set;
+  pthread_mutex_unlock(&this->loop_HartBit_Mux);
+  return;
+}
+
+bool Wk::get_HartBit()
+{
+  return this->hartBit;
 }

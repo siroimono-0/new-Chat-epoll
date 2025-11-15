@@ -53,16 +53,22 @@ public:
   void set_loop_Client(bool set);
 
   //============================================================================
-  void createTh_Recv(); // 리시브용 쓰레드
-  static void *recv_EntryPoint(void *vp);
-  void recv_EntryPoint_Loop();
-  void formSv_Recv();
+  void createTh_Recv();                   // 리시브용 쓰레드
+  static void *recv_EntryPoint(void *vp); //
+  void recv_EntryPoint_Loop();            //
+  void formSv_Recv();                     // recv mux ok
   //============================================================================
+
+  //===========================================================================
+  void createTh_HartBit();                   // sleep loop 돌면서 send 단방향
+  static void *HartBit_EntryPoint(void *vp); //
+  void HartBit_EntryPoint_Loop();            // send mux ok
+  //===========================================================================
 
 private:
   //============================================================================
-  int cli_Soc_Fd; // raii ok
-  int outPut_Ter_Fd = 0;
+  int cli_Soc_Fd;                  // raii ok
+  int outPut_Ter_Fd = 0;           //
   int outPut_Ep_Fd;                // raii ok
   bool loop_Client = true;         // mux ok
   pthread_mutex_t loop_Client_mux; // init destroy ok
@@ -76,8 +82,21 @@ private:
   int wakeUp_Fd; // raii ok
   //============================================================================
 
+  //============================================================================
+  pthread_mutex_t send_mux; // init destroy ok
+  //============================================================================
+
   RAII_nomal *raii_Nomal;
   RAII_soc *raii_Soc;
   RAII_epoll *raii_Ep;
   RAII_pipe *raii_Pipe;
 };
+
+/*
+하트비트용 쓰레드 만들어야댐
+슬립루프 돌리고
+wk에서 받아서 상태 업글
+메인에서 이미 사망체크 루프있음 거기에 ++ 해서 wk 죽임
+wk죽으면 shutdown으로 클라 자동 사망
+단 클라쪽 슬립루프 보다 메인 먼져 안죽게 슬립3초 넣어줌
+*/

@@ -4,7 +4,6 @@
 
 Sv::Sv()
 {
-
   this->raii_Nomal = new RAII_nomal;
   this->raii_Soc = new RAII_soc;
   this->raii_Ep = new RAII_epoll;
@@ -19,6 +18,7 @@ Sv::Sv()
 
   pthread_mutex_init(&this->loop_Server_Mux, nullptr);
   pthread_mutex_init(&this->fd_Wk_Mux, nullptr);
+  // g_Send_Recv_Mux = PTHREAD_MUTEX_INITIALIZER;
 }
 
 Sv::~Sv()
@@ -29,10 +29,13 @@ Sv::~Sv()
   delete this->raii_Pipe;
 
   int ret_mux_1 = pthread_mutex_destroy(&this->loop_Server_Mux);
-  check::ck_r(string(__func__) + " pthread_mutex_destroy loop_Server_Mux", ret_mux_1, 0);
+  check::ck_r(string(__func__) + " pthread_mutex_destroy  ::  loop_Server_Mux", ret_mux_1, 0);
 
   int ret_mux_2 = pthread_mutex_destroy(&this->fd_Wk_Mux);
-  check::ck_r(string(__func__) + " pthread_mutex_destroy fd_Wk_Mux", ret_mux_2, 0);
+  check::ck_r(string(__func__) + " pthread_mutex_destroy  ::  fd_Wk_Mux", ret_mux_2, 0);
+
+  // int ret_mux_3 = pthread_mutex_destroy(&g_Send_Recv_Mux);
+  // check::ck_r(string(__func__) + " pthread_mutex_destroy  ::  g_Send_Recv_Mux", ret_mux_3, 0);
 }
 
 void Sv::set_Loop_Server(bool set)
@@ -209,7 +212,6 @@ void Sv::del_EntryPoint_Loop()
   while (this->loop_Server)
   {
     sleep(5);
-
     bool del_Flag = false;
     int num = 0;
     int life_num = 0;
@@ -229,6 +231,20 @@ void Sv::del_EntryPoint_Loop()
       else
       {
         life_num++;
+        bool hartBit = this->vec_Fd_Wk[i].second->get_HartBit();
+        if (hartBit == false)
+        {
+          this->vec_Fd_Wk[i].second->set_Loop_Echo(false);
+          this->vec_Fd_Wk[i].second->wk_wakeUp_Now();
+          // wk 루프 끊어주고 epoll 깨워야댐
+          // 그럼 탈출하고 죽음 (이 떄에 지금 vec fd -1로 설정함)
+          // -> 해당 루프 순회하며 fd 검사
+          // -> 이 루프 에서 확인하고 wk 객체 정리
+        }
+        else if (hartBit == true)
+        {
+          this->vec_Fd_Wk[i].second->set_HartBit(false);
+        }
       }
     }
 
@@ -374,7 +390,13 @@ void Sv::formWk_ToCli_Echo()
     return;
   }
 
-  buf_Recv[ret_Recv_Len] = '\0';
+  if (ret_Recv_Len > 0 &&
+      (buf_Recv[ret_Recv_Len - 1] == '\n' ||
+       buf_Recv[ret_Recv_Len - 1] == '\r'))
+  {
+    ret_Recv_Len--;
+    buf_Recv[ret_Recv_Len] = '\0';
+  }
 
   for (int i = 0; i < (int)this->vec_Fd_Wk.size(); i++)
   {
@@ -434,7 +456,7 @@ void Sv::Shut_EntryPoint_Loop()
   {
     string buf_Get;
     getline(cin, buf_Get);
-    int buf_Size = (int)buf_Get.size();
+    // int buf_Size = (int)buf_Get.size();
     if (buf_Get == "Exit")
     {
       pthread_mutex_lock(&this->fd_Wk_Mux);

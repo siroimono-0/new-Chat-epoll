@@ -13,6 +13,7 @@ Client::Client()
   // raii
 
   pthread_mutex_init(&this->loop_Client_mux, nullptr);
+  pthread_mutex_init(&this->send_mux, nullptr);
 }
 
 Client::~Client()
@@ -23,7 +24,9 @@ Client::~Client()
   delete this->raii_Pipe;
 
   int ret_mux_1 = pthread_mutex_destroy(&this->loop_Client_mux);
-  check::ck_r(string(__func__) + " pthread_mutex_destroy loop_Client_mux", ret_mux_1, 0);
+  check::ck_r(string(__func__) + " pthread_mutex_destroy  ::  loop_Client_mux", ret_mux_1, 0);
+  int ret_mux_2 = pthread_mutex_destroy(&this->send_mux);
+  check::ck_r(string(__func__) + " pthread_mutex_destroy  ::  send_mux", ret_mux_2, 0);
 }
 
 void Client::set_loop_Client(bool set)
@@ -51,6 +54,9 @@ void Client::set_Client()
 
   this->createTh_Recv();
   // 리시브 쓰레드 생성
+
+  this->createTh_HartBit();
+  // 하트비트 쓰레드 생성
 
   //===============================epoll====================================
   this->outPut_Ep_Fd = epoll_create1(0);
@@ -104,6 +110,7 @@ void Client::set_Client()
                ep_Arr[i].events & (EPOLLIN))
       {
         this->set_loop_Client(false);
+
         uint64_t one;
         read(this->wakeUp_Fd, &one, sizeof(one));
         break;
@@ -118,17 +125,28 @@ void Client::sendToWk()
   char *buf_Recv = new char[256];
   memset(buf_Recv, 0, 256);
 
+  pthread_mutex_lock(&this->send_mux);
   int read_Len = read(this->outPut_Ter_Fd, buf_Recv, 256);
+  pthread_mutex_unlock(&this->send_mux);
 
   if (read_Len <= 0)
   {
     // read 에러 or EOF 처리
-    this->set_loop_Client(false);
+    // this->set_loop_Client(false);
     delete[] buf_Recv;
     return;
   }
 
-  buf_Recv[read_Len - 1] = '\0';
+  // 마지막 문자 '\n' 제거
+  if (buf_Recv[read_Len - 1] == '\n')
+  {
+
+    buf_Recv[read_Len - 1] = '\0';
+  }
+  else
+  {
+    buf_Recv[read_Len] = '\0';
+  }
 
   if (strcmp(buf_Recv, "end") == 0)
   {
@@ -137,7 +155,9 @@ void Client::sendToWk()
     return;
   }
 
+  pthread_mutex_lock(&this->send_mux);
   send(this->cli_Soc_Fd, buf_Recv, read_Len, 0);
+  pthread_mutex_unlock(&this->send_mux);
   // int ret_s = send(this->cli_Soc_Fd, buf_Recv, read_Len, 0);
   // check::ck("send ok", ret_s, -1);
 
@@ -270,13 +290,18 @@ void Client::formSv_Recv()
   char *buf_Recv = new char[256];
   memset(buf_Recv, 0, 256);
 
+  pthread_mutex_lock(&this->send_mux);
   int ret_Recv_Len = recv(this->cli_Soc_Fd, buf_Recv, 255, 0);
+  pthread_mutex_unlock(&this->send_mux);
+
   if (ret_Recv_Len <= 0)
   {
     this->set_loop_Client(false);
     return;
   }
-  cout << "Chat :: " << buf_Recv << "\n";
+
+  buf_Recv[ret_Recv_Len] = '\0';
+  cout << "Chat " << ":: " << buf_Recv << "\n";
 
   delete[] buf_Recv;
   return;
@@ -286,3 +311,60 @@ void Client::formSv_Recv()
 //=================================Recv Thread==================================
 //=================================Recv Thread==================================
 //=================================Recv Thread==================================
+
+//===============================HartBit Thread================================
+//===============================HartBit Thread================================
+//===============================HartBit Thread================================
+//===============================HartBit Thread================================
+//===============================HartBit Thread================================
+void Client::createTh_HartBit()
+{
+  pthread_t tid;
+  int ret_P = pthread_create(&tid, nullptr, HartBit_EntryPoint, (void *)this);
+  check::ck_r(string(__func__) + " pthread_create", ret_P, 0);
+
+  int ret_D = pthread_detach(tid);
+  check::ck_r(string(__func__) + " pthread_detach", ret_D, 0);
+}
+
+void *Client::HartBit_EntryPoint(void *vp)
+{
+  Client *p_this = (Client *)vp;
+  try
+  {
+    p_this->HartBit_EntryPoint_Loop();
+  }
+  catch (Exception err)
+  {
+    int err_code = err.get_err_code();
+    string err_name = err.get_err_name();
+    string name = err.get_name();
+    printf("ERR\nname     :: %s\nerr type :: %s\nerr code :: %d\n",
+           name.c_str(), err_name.c_str(), err_code);
+    return nullptr;
+  }
+  return nullptr;
+}
+
+void Client::HartBit_EntryPoint_Loop()
+{
+  while (this->loop_Client)
+  {
+    string buf_Send("HartBit");
+
+    pthread_mutex_lock(&this->send_mux);
+    send(this->cli_Soc_Fd, buf_Send.c_str(), buf_Send.size() + 1, 0);
+    pthread_mutex_unlock(&this->send_mux);
+
+    // cout << "go bit" << "\n";
+    sleep(1);
+  }
+
+  uint64_t g = 1;
+  write(this->wakeUp_Fd, &g, sizeof(g));
+}
+//===============================HartBit Thread================================
+//===============================HartBit Thread================================
+//===============================HartBit Thread================================
+//===============================HartBit Thread================================
+//===============================HartBit Thread================================

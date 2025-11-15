@@ -43,6 +43,8 @@ class RAII_epoll;
 class RAII_pipe;
 class Wk;
 
+extern pthread_mutex_t g_Send_Recv_Mux; // init, destroy ok
+
 class Sv
 {
 public:
@@ -61,7 +63,8 @@ public:
   //=========================================================================
   void createTh_del(); // 죽은 Wk객체 delete용 Thread
   static void *del_EntryPoint(void *vp);
-  void del_EntryPoint_Loop();
+  void del_EntryPoint_Loop(); // 사망한 객체 확인 검사
+                              // HartBit 검사도 같이함
   //=========================================================================
 
   //=========================================================================
