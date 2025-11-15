@@ -12,6 +12,9 @@ Client::Client()
   this->raii_Nomal->vec.push_back({this->wakeUp_Fd, "wakeUp_fd"});
   // raii
 
+  this->wakeUp_Recv_Fd = eventfd(0, EFD_NONBLOCK);
+  this->raii_Nomal->vec.push_back({this->wakeUp_Recv_Fd, "wakeUp_Recv_fd"});
+
   pthread_mutex_init(&this->loop_Client_mux, nullptr);
   pthread_mutex_init(&this->send_mux, nullptr);
 }
@@ -97,7 +100,7 @@ void Client::set_Client()
   while (this->loop_Client)
   {
     int ret_ep = epoll_wait(this->outPut_Ep_Fd, ep_Arr, 5, -1);
-    // check::ck(string(__func__) + "  epoll_wait", ret_ep, -1);
+    check::ck(string(__func__) + "  epoll_wait", ret_ep, -1);
 
     for (int i = 0; i < ret_ep; i++)
     {
@@ -112,12 +115,20 @@ void Client::set_Client()
         this->set_loop_Client(false);
 
         uint64_t one;
-        read(this->wakeUp_Fd, &one, sizeof(one));
+        while (read(this->wakeUp_Fd, &one, sizeof(one)) > 0)
+          ;
         break;
       }
     }
   }
-  cout << " Exit main loop" << string(__func__) << "\n";
+
+  int ret_th_1 = pthread_join(this->recv_tid, nullptr);
+  check::ck_r(string(__func__) + " pthread_join  ::  recv", ret_th_1, 0);
+
+  int ret_th_2 = pthread_join(this->hartBit_tid, nullptr);
+  check::ck_r(string(__func__) + " pthread_join  ::  hartBit", ret_th_2, 0);
+
+  cout << "Exit main loop" << string(__func__) << "\n";
 }
 
 void Client::sendToWk()
@@ -151,6 +162,8 @@ void Client::sendToWk()
   if (strcmp(buf_Recv, "end") == 0)
   {
     this->set_loop_Client(false);
+    uint64_t g = 1;
+    write(this->wakeUp_Recv_Fd, &g, sizeof(g));
     delete[] buf_Recv;
     return;
   }
@@ -171,12 +184,12 @@ void Client::sendToWk()
 //=================================Recv Thread==================================
 void Client::createTh_Recv()
 {
-  pthread_t tid;
-  int ret_P = pthread_create(&tid, nullptr, recv_EntryPoint, (void *)this);
+  // pthread_t tid;
+  int ret_P = pthread_create(&this->recv_tid, nullptr, recv_EntryPoint, (void *)this);
   check::ck_r(string(__func__) + " pthread_create", ret_P, 0);
 
-  int ret_D = pthread_detach(tid);
-  check::ck_r(string(__func__) + " pthread_detach", ret_D, 0);
+  // int ret_D = pthread_detach(tid);
+  // check::ck_r(string(__func__) + " pthread_detach", ret_D, 0);
   return;
 }
 
@@ -186,6 +199,7 @@ void *Client::recv_EntryPoint(void *vp)
   try
   {
     p_this->recv_EntryPoint_Loop();
+    cout << "Exit " << __func__ << endl;
   }
   catch (Exception err)
   {
@@ -224,20 +238,20 @@ void Client::recv_EntryPoint_Loop()
   // raii
 
   epoll_data_t wk_ep_D = {};
-  wk_ep_D.fd = this->wakeUp_Fd;
+  wk_ep_D.fd = this->wakeUp_Recv_Fd;
 
   struct epoll_event wk_ep_E = {};
   wk_ep_E.events = EPOLLIN;
   wk_ep_E.data = wk_ep_D;
 
   int ret_ctl_2 =
-      epoll_ctl(this->recv_Ep_Fd, EPOLL_CTL_ADD, this->wakeUp_Fd, &wk_ep_E);
+      epoll_ctl(this->recv_Ep_Fd, EPOLL_CTL_ADD, this->wakeUp_Recv_Fd, &wk_ep_E);
   check::ck_r(string(__func__) + " ret_ctl_2", ret_ctl_2, 0);
 
   struct st_RAII_epoll st_raii_2 = {};
   st_raii_2.ep_fd = this->recv_Ep_Fd;
-  st_raii_2.fd = this->wakeUp_Fd;
-  st_raii_2.name_ep_fd = string("echoEp_Fd  wakeUp_Fd");
+  st_raii_2.fd = this->wakeUp_Recv_Fd;
+  st_raii_2.name_ep_fd = string("echoEp_Fd  wakeUp_Recv_Fd");
   this->raii_Ep->vec.push_back(st_raii_2);
   // raii
 
@@ -259,6 +273,7 @@ void Client::recv_EntryPoint_Loop()
         uint64_t g = 1;
         write(this->wakeUp_Fd, &g, sizeof(g));
         cout << "Server :: EPOLLHUP | EPOLLERR" << "\n";
+        return;
       }
       else if (ep_Arr[i].data.fd == this->cli_Soc_Fd &&
                ep_Arr[i].events & (EPOLLRDHUP))
@@ -267,19 +282,21 @@ void Client::recv_EntryPoint_Loop()
         uint64_t g = 1;
         write(this->wakeUp_Fd, &g, sizeof(g));
         cout << "Server :: EPOLLRDHUP" << "\n";
+        return;
       }
       else if (ep_Arr[i].data.fd == this->cli_Soc_Fd &&
                ep_Arr[i].events & (EPOLLIN))
       {
         this->formSv_Recv();
       }
-      else if (ep_Arr[i].data.fd == this->wakeUp_Fd &&
+      else if (ep_Arr[i].data.fd == this->wakeUp_Recv_Fd &&
                ep_Arr[i].events & (EPOLLIN))
       {
         this->set_loop_Client(false);
         cout << "Server :: Wakeup" << "\n";
         uint64_t one;
-        read(this->wakeUp_Fd, &one, sizeof(one));
+        read(this->wakeUp_Recv_Fd, &one, sizeof(one));
+        return;
       }
     }
   }
@@ -319,12 +336,12 @@ void Client::formSv_Recv()
 //===============================HartBit Thread================================
 void Client::createTh_HartBit()
 {
-  pthread_t tid;
-  int ret_P = pthread_create(&tid, nullptr, HartBit_EntryPoint, (void *)this);
+  // pthread_t tid;
+  int ret_P = pthread_create(&this->hartBit_tid, nullptr, HartBit_EntryPoint, (void *)this);
   check::ck_r(string(__func__) + " pthread_create", ret_P, 0);
 
-  int ret_D = pthread_detach(tid);
-  check::ck_r(string(__func__) + " pthread_detach", ret_D, 0);
+  // int ret_D = pthread_detach(tid);
+  // check::ck_r(string(__func__) + " pthread_detach", ret_D, 0);
 }
 
 void *Client::HartBit_EntryPoint(void *vp)
@@ -357,11 +374,8 @@ void Client::HartBit_EntryPoint_Loop()
     pthread_mutex_unlock(&this->send_mux);
 
     // cout << "go bit" << "\n";
-    sleep(1);
+    sleep(100);
   }
-
-  uint64_t g = 1;
-  write(this->wakeUp_Fd, &g, sizeof(g));
 }
 //===============================HartBit Thread================================
 //===============================HartBit Thread================================

@@ -133,7 +133,7 @@ void Wk::wk_EntryPoint_Loop()
   while (this->loop_Echo)
   {
     int ret_ep = epoll_wait(this->newCli_Ep_Fd, ep_Arr, 5, -1);
-    // check::ck(string(__func__) + " epoll_wait", ret_ep, -1);
+    check::ck(string(__func__) + " epoll_wait", ret_ep, -1);
 
     for (int i = 0; i < ret_ep; i++)
     {

@@ -53,7 +53,7 @@ public:
   void set_loop_Client(bool set);
 
   //============================================================================
-  void createTh_Recv();                   // 리시브용 쓰레드
+  void createTh_Recv();                   // 리시브용 쓰레드 join ok
   static void *recv_EntryPoint(void *vp); //
   void recv_EntryPoint_Loop();            //
   void formSv_Recv();                     // recv mux ok
@@ -61,7 +61,7 @@ public:
 
   //===========================================================================
   void createTh_HartBit();                   // sleep loop 돌면서 send 단방향
-  static void *HartBit_EntryPoint(void *vp); //
+  static void *HartBit_EntryPoint(void *vp); // join ok
   void HartBit_EntryPoint_Loop();            // send mux ok
   //===========================================================================
 
@@ -79,11 +79,17 @@ private:
   //============================================================================
 
   //============================================================================
-  int wakeUp_Fd; // raii ok
+  int wakeUp_Fd;      // raii ok
+  int wakeUp_Recv_Fd; // raii ok
   //============================================================================
 
   //============================================================================
   pthread_mutex_t send_mux; // init destroy ok
+  //============================================================================
+
+  //============================================================================
+  pthread_t recv_tid;
+  pthread_t hartBit_tid;
   //============================================================================
 
   RAII_nomal *raii_Nomal;

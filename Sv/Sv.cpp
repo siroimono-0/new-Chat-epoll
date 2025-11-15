@@ -119,7 +119,7 @@ void Sv::set_Server()
   wk_ep_E.events = EPOLLIN;
   wk_ep_E.data = wk_ep_D;
 
-  epoll_ctl(this->svEp_Fd, EPOLL_CTL_ADD, this->wakeUp_Fd, &ep_E);
+  epoll_ctl(this->svEp_Fd, EPOLL_CTL_ADD, this->wakeUp_Fd, &wk_ep_E);
 
   struct st_RAII_epoll st_raii_2 = {};
   st_raii_2.ep_fd = this->svEp_Fd;
@@ -169,6 +169,15 @@ void Sv::set_Server()
       }
     }
   }
+
+  int ret_th_1 = pthread_join(this->del_tid, nullptr);
+  check::ck_r(string(__func__) + " pthread_join  ::  del", ret_th_1, 0);
+
+  int ret_th_2 = pthread_join(this->shut_tid, nullptr);
+  check::ck_r(string(__func__) + " pthread_join  ::  shut", ret_th_2, 0);
+
+  int ret_th_3 = pthread_join(this->echo_tid, nullptr);
+  check::ck_r(string(__func__) + " pthread_join  ::  echo", ret_th_3, 0);
   return;
 }
 
@@ -179,12 +188,11 @@ void Sv::set_Server()
 //=================================dell Thread==================================
 void Sv::createTh_del()
 {
-  pthread_t tid;
-  int ret_P = pthread_create(&tid, nullptr, del_EntryPoint, (void *)this);
+  int ret_P = pthread_create(&this->del_tid, nullptr, del_EntryPoint, (void *)this);
   check::ck_r(string(__func__) + " pthread_create", ret_P, 0);
 
-  int ret_D = pthread_detach(tid);
-  check::ck_r(string(__func__) + " pthread_detach", ret_D, 0);
+  // int ret_D = pthread_detach(tid);
+  // check::ck_r(string(__func__) + " pthread_detach", ret_D, 0);
 }
 
 void *Sv::del_EntryPoint(void *vp)
@@ -268,12 +276,11 @@ void Sv::del_EntryPoint_Loop()
 //=================================Echo Thread==================================
 void Sv::createTh_Echo()
 {
-  pthread_t tid;
-  int ret_P = pthread_create(&tid, nullptr, echo_EntryPoint, (void *)this);
+  int ret_P = pthread_create(&this->echo_tid, nullptr, echo_EntryPoint, (void *)this);
   check::ck_r(string(__func__) + " pthread_create", ret_P, 0);
 
-  int ret_D = pthread_detach(tid);
-  check::ck_r(string(__func__) + " pthread_detach", ret_D, 0);
+  // int ret_D = pthread_detach(tid);
+  // check::ck_r(string(__func__) + " pthread_detach", ret_D, 0);
 }
 
 void *Sv::echo_EntryPoint(void *vp)
@@ -371,8 +378,8 @@ void Sv::echo_EntryPoint_Loop()
       {
         this->set_Loop_Server(false);
         cout << "Server :: Wakeup" << "\n";
-        uint64_t one;
-        read(this->wakeUp_Fd, &one, sizeof(one));
+        // uint64_t one;
+        // read(this->wakeUp_Fd, &one, sizeof(one));
       }
     }
   }
@@ -422,12 +429,11 @@ void Sv::formWk_ToCli_Echo()
 //=================================Shut Thread==================================
 void Sv::createTh_Shut()
 {
-  pthread_t tid;
-  int ret_P = pthread_create(&tid, nullptr, Shut_EntryPoint, (void *)this);
+  int ret_P = pthread_create(&this->shut_tid, nullptr, Shut_EntryPoint, (void *)this);
   check::ck_r(string(__func__) + " pthread_create", ret_P, 0);
 
-  int ret_D = pthread_detach(tid);
-  check::ck_r(string(__func__) + " pthread_detach", ret_D, 0);
+  // int ret_D = pthread_detach(tid);
+  // check::ck_r(string(__func__) + " pthread_detach", ret_D, 0);
   return;
 }
 
@@ -474,7 +480,6 @@ void Sv::Shut_EntryPoint_Loop()
       pthread_mutex_unlock(&this->fd_Wk_Mux);
 
       uint64_t g = 1;
-      write(this->wakeUp_Fd, &g, sizeof(g));
       write(this->wakeUp_Fd, &g, sizeof(g));
     }
     else

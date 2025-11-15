@@ -43,7 +43,7 @@ class RAII_epoll;
 class RAII_pipe;
 class Wk;
 
-extern pthread_mutex_t g_Send_Recv_Mux; // init, destroy ok
+// extern pthread_mutex_t g_Send_Recv_Mux; // init, destroy ok
 
 class Sv
 {
@@ -55,13 +55,13 @@ public:
   // void end_Server();
 
   //=========================================================================
-  void createTh_Shut(); // 셧다운 명령용 쓰레드
+  void createTh_Shut(); // 셧다운 명령용 쓰레드 // join ok
   static void *Shut_EntryPoint(void *vp);
   void Shut_EntryPoint_Loop(); // fd검사 레이스 컨디션 mux ok
   //=========================================================================
 
   //=========================================================================
-  void createTh_del(); // 죽은 Wk객체 delete용 Thread
+  void createTh_del(); // 죽은 Wk객체 delete용 Thread // join ok
   static void *del_EntryPoint(void *vp);
   void del_EntryPoint_Loop(); // 사망한 객체 확인 검사
                               // HartBit 검사도 같이함
@@ -74,7 +74,7 @@ public:
   //=========================================================================
 
   //=========================================================================
-  void createTh_Echo(); // 채팅 브로드 캐스트용 Th
+  void createTh_Echo(); // 채팅 브로드 캐스트용 Th // join ok
   static void *echo_EntryPoint(void *vp);
   void echo_EntryPoint_Loop();
   void formWk_ToCli_Echo();
@@ -95,6 +95,11 @@ private:
   //=============================================
   vector<pair<int, Wk *>> vec_Fd_Wk; // 자신이 죽으면 Wk가 fd를 -1로 변경
                                      // 그럼 특정 연결된 wk 도 정리
+
+  //=============================================
+  pthread_t shut_tid;
+  pthread_t del_tid;
+  pthread_t echo_tid;
 
   RAII_nomal *raii_Nomal;
   RAII_soc *raii_Soc;
