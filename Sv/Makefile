@@ -4,6 +4,9 @@
 CROSS_COMPILE = aarch64-none-linux-gnu-
 CXX = $(CROSS_COMPILE)g++
 
+# CROSS_COMPILE = aarch64-none-linux-gnu-
+# CXX = g++
+
 CXXFLAGS = -Wall -Wextra -std=c++17 -g
 TARGET = main
 
