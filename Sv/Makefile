@@ -1,7 +1,9 @@
 # ============================
 #   설정
 # ============================
-CXX = g++
+CROSS_COMPILE = aarch64-none-linux-gnu-
+CXX = $(CROSS_COMPILE)g++
+
 CXXFLAGS = -Wall -Wextra -std=c++17 -g
 TARGET = main
 
@@ -25,9 +27,15 @@ $(TARGET): $(OBJS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 # ============================
+#   확인
+# ============================
+check:
+	file $(TARGET)
+
+# ============================
 #   clean
 # ============================
 clean:
 	rm -f $(OBJS) $(TARGET)
 
-.PHONY: all clean
+.PHONY: all clean check

@@ -1,8 +1,8 @@
+#include <algorithm>
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
-#include <algorithm>
-#include <map>
 
 // C 표준 라이브러리
 #include <cstdio>  // perror, printf
@@ -10,27 +10,27 @@
 #include <cstring> // memset, memcpy, strcpy
 
 // UNIX system
-#include <unistd.h> // close, read, write, usleep
 #include <errno.h>  // errno
+#include <unistd.h> // close, read, write, usleep
 
 // 파일/디렉터리
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/epoll.h>
+#include <sys/stat.h>
 
 // IPC (System V & POSIX)
+#include <mqueue.h> // mq_open, mq_send, mq_receive
 #include <sys/ipc.h>
 #include <sys/msg.h> // msgget, msgrcv, msgsnd
-#include <mqueue.h>  // mq_open, mq_send, mq_receive
 
 // Signals
 #include <signal.h>
 
 // 소켓 관련
-#include <sys/types.h> // socket(), bind() 등에 필요
-#include <sys/socket.h>
-#include <netinet/in.h> // sockaddr_in
 #include <arpa/inet.h>  // inet_addr, htons
+#include <netinet/in.h> // sockaddr_in
+#include <sys/socket.h>
+#include <sys/types.h> // socket(), bind() 등에 필요
 
 using namespace std;
 
@@ -49,9 +49,18 @@ public:
     this->err_name = err_name;
     this->err_code = err_code;
   }
-  string get_name() { return this->name; }
-  string get_err_name() { return this->err_name; }
-  int get_err_code() { return this->err_code; }
+  string get_name()
+  {
+    return this->name;
+  }
+  string get_err_name()
+  {
+    return this->err_name;
+  }
+  int get_err_code()
+  {
+    return this->err_code;
+  }
   ~Exception() {}
 };
 
@@ -126,20 +135,20 @@ class RAII_nomal
 {
 private:
 public:
-  RAII_nomal()
+  RAII_nomal(int fd, string name)
   {
+    this->fd = fd;
+    this->name = name;
   }
 
   ~RAII_nomal()
   {
-    for (auto &v : vec)
-    {
-      close(v.first);
-      cout << "Close ::  " + v.second << "\n";
-    }
+    close(fd);
+    cout << "Close ::  " + name << "\n";
   }
 
-  vector<pair<int, string>> vec;
+  int fd;
+  string name;
 };
 
 //==========================================================================
@@ -149,22 +158,23 @@ class RAII_soc
 {
 private:
 public:
-  RAII_soc()
+  RAII_soc(int fd, string name)
   {
+    this->fd = fd;
+    this->name = name;
   }
 
   ~RAII_soc()
   {
-    for (auto &v : vec)
-    {
-      shutdown(v.first, SHUT_WR);
-      close(v.first);
-      cout << "Close ::  " + v.second << "\n";
-    }
+    shutdown(fd, SHUT_WR);
+    close(fd);
+    cout << "Close ::  " << name << "\n";
   }
+  int fd;
+  string name;
+}
 
-  vector<pair<int, string>> vec;
-};
+;
 
 //==========================================================================
 //==========================================================================

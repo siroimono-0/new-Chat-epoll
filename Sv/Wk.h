@@ -1,10 +1,10 @@
 #pragma once
 
+#include <algorithm>
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
-#include <algorithm>
-#include <map>
 
 // C 표준 라이브러리
 #include <cstdio>  // perror, printf
@@ -12,29 +12,29 @@
 #include <cstring> // memset, memcpy, strcpy
 
 // UNIX system
-#include <unistd.h> // close, read, write, usleep
 #include <errno.h>  // errno
+#include <unistd.h> // close, read, write, usleep
 
 // 파일/디렉터리
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/epoll.h>
 #include <sys/eventfd.h>
+#include <sys/stat.h>
 
 // IPC (System V & POSIX)
+#include <mqueue.h> // mq_open, mq_send, mq_receive
+#include <pthread.h>
 #include <sys/ipc.h>
 #include <sys/msg.h> // msgget, msgrcv, msgsnd
-#include <mqueue.h>  // mq_open, mq_send, mq_receive
-#include <pthread.h>
 
 // Signals
 #include <signal.h>
 
 // 소켓 관련
-#include <sys/types.h> // socket(), bind() 등에 필요
-#include <sys/socket.h>
-#include <netinet/in.h> // sockaddr_in
 #include <arpa/inet.h>  // inet_addr, htons
+#include <netinet/in.h> // sockaddr_in
+#include <sys/socket.h>
+#include <sys/types.h> // socket(), bind() 등에 필요
 
 using namespace std;
 
@@ -50,40 +50,21 @@ public:
   ~Wk();
 
   //============================================================================
-  void createTh_Wk(Sv *p_Sv, int pairSoc, int newCli_Soc);
-  static void *wk_EntryPoint(void *vp);
-  void wk_EntryPoint_Loop();
-
-  void fromCli_ToSv_Echo(); // mux ok
+  void create_Th_Send();
+  static void *EntryPoint_Send(void *vp);
+  void set_sv_cliSoc(int set);
   //============================================================================
-  void set_Loop_Echo(bool set); // mutex ok
-  void wk_wakeUp_Now();         //
-  void set_HartBit(bool set);   // mux ok
-  bool get_HartBit();
   //============================================================================
 
 private:
-  Sv *p_Sv;
-
-  int newCli_Soc_Fd;               // raii ok
-  int newCli_Ep_Fd;                // raii ok
-  int wk_Sv_Wk_PairSoc;            // Sv에서 raii
-  bool loop_Echo = true;           // mutex ok
-  pthread_mutex_t loop_Echo_Mutex; // init, destroy ok
   //============================================================================
-  int wk_WakeUp_Fd; // raii ok
-  //============================================================================
-
-  //============================================================================
-  bool hartBit = true;              // mux ok
-  pthread_mutex_t loop_HartBit_Mux; // init, destroy ok
+  int sv_cliSoc;
+  pthread_t Send_tid;
   //============================================================================
 
   //============================================================================
   //============================================================================
 
-  RAII_nomal *raii_nomal;
-  RAII_soc *raii_soc;
-  RAII_epoll *raii_ep;
-  RAII_pipe *raii_pipe;
+  //============================================================================
+  //============================================================================
 };

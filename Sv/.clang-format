@@ -1,0 +1,14 @@
+BasedOnStyle: LLVM
+IndentWidth: 2
+TabWidth: 2
+UseTab: Never
+ColumnLimit: 0
+
+# ★ 핵심 — 여는 중괄호를 다음 줄로(Allman Style)
+BreakBeforeBraces: Allman
+
+# if, for, while 등 제어문 괄호도 Allman 적용
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+
